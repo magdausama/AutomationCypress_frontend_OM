@@ -1,38 +1,51 @@
-// // Function to get access token
-// function getToken() {
-//   let data = {
-//     grant_type: 'password',
-//     client_id: 'phelix_frontend',
-//     username: Cypress.env('username'),
-//     password: Cypress.env('password')
-//   };
-
-//   return cy.request({
-//     method: 'POST',
-//     url: 'https://sso-dev.pixelogicplayground.com/auth/realms/phelix/protocol/openid-connect/token',
-//     headers: {
-//         'Content-Type': 'application/x-www-form-urlencoded'
-//     },
-//     body: data
-//   }).then((response) => response.body.access_token);
-// }
 
 
-// function createNewTitle(url, body) {
-//   return getToken().then((accessToken) => {
-//     return cy.request({
-//       method: 'POST',
-//       url: url,
-//       body: body,
-//       headers: {
-//         'Content-Type': 'application/json',
-//         'Authorization': `Bearer ${accessToken}`
-//       }
-//     });
-//   });
-// };
+function getToken() {
+  let data = {
+    grant_type: 'password',
+    client_id: 'phelix_frontend',
+    username: Cypress.env('username'),
+    password: Cypress.env('password')
+  };
+  return cy.request({
+    method: 'POST',
+    url: 'https://sso-dev.pixelogicplayground.com/auth/realms/phelix/protocol/openid-connect/token',
+    headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: data
+  }).then((response) => response.body.access_token);
+}
 
-// describe('Create New Title for each new job', function() {
+function createNewTitle(url, body) {
+  return getToken().then((accessToken) => {
+    return cy.request({
+      method: 'POST',
+      url: url,
+      body: body,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      }
+    });
+  });
+};
+
+let possibleValues = {
+  priorities: null,
+  billingClients: null,
+  productionStatuses: null,
+  destinations: null,
+  countries: null,
+  territories: null,
+  vendorLocations: null,
+  languages: null,
+  releaseTypes: null,
+  lineOfBusinesses: null
+};
+let randomValues = {};
+let billingClientAlias, prioritiesAlias, productionStatusesAlias, destinationsAlias, countriesAlias, territoriesAlias, vendorLocationAlias,languageAlias,releaseTypeAlias,lineOfBusinessAlias;
+// describe('', function() {
 //   let url = 'https://coredb-dev.pixelogicplayground.com/api/v1/admin/titles/?add-additional-clients=false';
   
 //   // Run before each test
@@ -60,160 +73,145 @@
 //   })});
 
 
-it('get values', () => {
-    let priorityValues = [];
-    let billingClientValues = [];
-    let productionStatusValues=[];
-    let destinationValues=[];
-    let countryValues=[];
-    let territoriesValues=[];
-    let vendorLocationValues=[];
-    let languageValues=[];
-    let releaseTypeValues=[];
-    let lineOfBusinessValues=[];
-
-    cy.intercept('GET', 'https://phelix-api-v2-dev.pixelogicplayground.com/apis/v1/lookups/priorities', (req) => {
-    req.continue((res) => {
-    const relevantItems = res.body.slice(0, -2);
-    priorityValues = relevantItems.map(item => item.name);
-    });
-  }).as('prioritiesRequest');
 
 
-  cy.intercept('GET', 'https://phelix-api-v2-dev.pixelogicplayground.com/apis/v1/clients?isBillingClient=true', (req) => {
-    req.continue((res) => {
-    const relevantItems = res.body;
-    billingClientValues = relevantItems.map(item => item.name);
-    });
-  }).as('billingClientRequest');
+function interceptAPI(url, alias) {
+  cy.intercept('GET', url).as(alias);
+  return '@' + alias;
+}
+function extractDataFromResponse(interceptAlias, field) {
+  let extractedValues = [];
 
-  cy.intercept('GET', 'https://phelix-api-v2-dev.pixelogicplayground.com/apis/v1/lookups/production-statuses', (req) => {
-    req.continue((res) => {
-    const relevantItems = res.body;
-    productionStatusValues = relevantItems.map(item => item.name);
-    });
-  }).as('productionStatusRequest');
+  cy.wait(interceptAlias).then((interception) => {
+      const responseBody = interception.response.body;
 
-  cy.intercept('GET','https://phelix-api-v2-dev.pixelogicplayground.com/apis/v1/lookups/destinations', (req) => {
-    req.continue((res) => {
-    const relevantItems = res.body;
-    destinationValues = relevantItems.map(item => item.label);
-    });
-  }).as('destinationRequest');
+      // Check if responseBody is defined
+      if (!responseBody) {
+          throw new Error('The response body is undefined.');
+      }
 
-
-  cy.intercept('GET','https://phelix-api-v2-dev.pixelogicplayground.com/apis/v1/lookups/countries', (req) => {
-    req.continue((res) => {
-    const relevantItems = res.body;
-    countryValues = relevantItems.map(item => item.name);
-    });
-  }).as('countryRequest');
-  
-
-
-  cy.intercept('GET','https://phelix-api-v2-dev.pixelogicplayground.com/apis/v1/lookups/territories' , (req) => {
-    req.continue((res) => {
-    const relevantItems = res.body;
-    territoriesValues = relevantItems.map(item => item.name);
-    });
-  }).as('territoriesRequest');
-
-
-
-
-  cy.intercept('GET','https://phelix-api-v2-dev.pixelogicplayground.com/apis/v1/vendors/pixelogic/vendor-locations' , (req) => {
-    req.continue((res) => {
-    const relevantItems = res.body;
-    vendorLocationValues = relevantItems.map(item => item.city);
-    });
-  }).as('vendorLocationRequest');
-
-
-  cy.intercept('GET','https://phelix-api-v2-dev.pixelogicplayground.com/apis/v1/lookups/languages' , (req) => {
-    req.continue((res) => {
-    const relevantItems = res.body;
-    languageValues = relevantItems.map(item => item.value);
-    });
-  }).as('languageRequest');
-
-
-
-  const extractLabelsFromReleaseType = (responseBody) => {
-    return responseBody.map(item => ({
-        label: item.label,
-        childLabels: item.children.map(child => child.label)
-    }));
-};
-
-cy.intercept('GET', 'https://phelix-api-v2-dev.pixelogicplayground.com/apis/v1/lookups/release-types', (req) => {
-    req.continue((res) => {
-        releaseTypeValues = extractLabelsFromReleaseType(res.body);
-    });
-}).as('releaseTypeRequest');
-
-
-const extractLabelsFromLineOfBusiness= (responseBody) => {
-  return responseBody.map(item => ({
-      label: item.name,
-      childLabels: item.children.map(child => child.name)
-  }));
-};
-
-cy.intercept('GET', 'https://phelix-api-v2-dev.pixelogicplayground.com/apis/v1/lookups/line-of-businesses', (req) => {
-  req.continue((res) => {
-    lineOfBusinessValues = extractLabelsFromLineOfBusiness(res.body);
-  });
-}).as('lineOfBusinessRequest');
-
-
-
-
-
-  //------------------------Login & click on new job-------------------------//
-  cy.visit('/operations-manager');
-  cy.login(Cypress.env('username'), Cypress.env('password'));
-  cy.get('.App-header-title').should('be.visible');
-  cy.wait(5000);
-  cy.get('.phelix-om-antd-v4-btn-primary').click();
-  cy.wait(3000);
-
-    //------------------------Calling alias-------------------------//
-
-  cy.wait('@prioritiesRequest').then(() => {
-    console.log(priorityValues);});
-  cy.wait('@billingClientRequest').then(() => {
-    console.log(billingClientValues);
-;});
-  cy.wait('@productionStatusRequest').then(() => {
-    console.log(productionStatusValues);}); 
-  cy.wait('@destinationRequest').then(() => {
-    console.log(destinationValues);}); 
-    cy.wait('@languageRequest').then(() => {
-    console.log(languageValues);});
-  cy.wait('@territoriesRequest').then(() => {
-    console.log(territoriesValues); 
-  });
-  cy.wait('@countryRequest').then(() => {
-    console.log(countryValues); 
-  });
-  cy.wait('@vendorLocationRequest').then(() => {
-    console.log(vendorLocationValues); 
-  });
-  cy.wait('@releaseTypeRequest').then(() => {
-    console.log(releaseTypeValues); 
-  });
-  cy.wait('@lineOfBusinessRequest').then(() => {
-    console.log(lin); 
+      if (typeof field === 'function') {
+          extractedValues = field(responseBody);
+      } else if (Array.isArray(responseBody)) {  // Check if responseBody is an array
+          extractedValues = responseBody.map(item => item[field]);
+      } else {
+          throw new Error('Expected the response body to be an array.');
+      }
   });
 
+  return cy.wrap(extractedValues);
+}
 
-})
-// describe('login', function() {
-//   beforeEach(() => {
-//     cy.visit('/operations-manager');
-//     cy.login(Cypress.env('username'), Cypress.env('password'));
-//     cy.get('.App-header-title').should('be.visible');
-// })})
+
+function getRandomElement(arr) {
+  if (arr && arr.length) {
+    return arr[Math.floor(Math.random() * arr.length)];
+  }
+  return null;  // if arr is empty or not an array
+}
+describe('Get All values of each field', () => {
+  before(() => {
+    cy.visit('/operations-manager');
+    cy.login(Cypress.env('username'), Cypress.env('password'));
+    cy.get('.App-header-title').should('be.visible');
+     billingClientAlias = interceptAPI('https://phelix-api-v2-dev.pixelogicplayground.com/apis/v1/clients?isBillingClient=true','billingClient');
+     prioritiesAlias=interceptAPI('https://phelix-api-v2-dev.pixelogicplayground.com/apis/v1/lookups/priorities','priorities');
+     productionStatusesAlias= interceptAPI('https://phelix-api-v2-dev.pixelogicplayground.com/apis/v1/lookups/production-statuses','productionStatuses');
+     destinationsAlias =interceptAPI('https://phelix-api-v2-dev.pixelogicplayground.com/apis/v1/lookups/destinations','destinations');
+     countriesAlias=interceptAPI('https://phelix-api-v2-dev.pixelogicplayground.com/apis/v1/lookups/countries','countries');
+     territoriesAlias= interceptAPI('https://phelix-api-v2-dev.pixelogicplayground.com/apis/v1/lookups/territories', 'territories');
+     vendorLocationAlias= interceptAPI('https://phelix-api-v2-dev.pixelogicplayground.com/apis/v1/vendors/pixelogic/vendor-locations','vendorLocation');
+     languageAlias=interceptAPI('https://phelix-api-v2-dev.pixelogicplayground.com/apis/v1/lookups/languages','language');
+     releaseTypeAlias= interceptAPI('https://phelix-api-v2-dev.pixelogicplayground.com/apis/v1/lookups/release-types','releaseType');
+     lineOfBusinessAlias=interceptAPI('https://phelix-api-v2-dev.pixelogicplayground.com/apis/v1/lookups/line-of-businesses','lineOfBusiness');
+    cy.get('.phelix-om-antd-v4-btn-primary').click();
+  });
+
+  it('should populate possible values from multiple endpoints', () => {
+
+    cy.wait(billingClientAlias)
+    .then((interception) => {
+      possibleValues.billingClients = extractDataFromResponse(interception, 'name');
+    });
+    cy.wait(prioritiesAlias)
+    .then((interception) => {
+      possibleValues.priorities = extractDataFromResponse(interception, body => body.slice(0, -2).map(item => item.name));
+    });
+    cy.wait(productionStatusesAlias)
+      .then((interception) => {
+        possibleValues.productionStatuses = extractDataFromResponse(interception, 'name');
+      });
+      cy.wait(destinationsAlias)
+      .then((interception) => {
+        possibleValues.destinations = extractDataFromResponse(interception, 'label');
+      });
+      cy.wait(countriesAlias)
+      .then((interception) => {
+        possibleValues.countries = extractDataFromResponse(interception, 'name');
+      });
+
+      cy.wait(territoriesAlias)
+      .then((interception) => {
+        possibleValues.territories = extractDataFromResponse(interception, 'name');
+      });
+
+      cy.wait(vendorLocationAlias)
+      .then((interception) => {
+        possibleValues.vendorLocations = extractDataFromResponse(interception, 'city');
+      });
+      cy.wait(languageAlias)
+      .then((interception) => {
+        possibleValues.languages = extractDataFromResponse(interception, 'value');
+      });
+
+    const extractLabelsFromReleaseType = (responseBody) => {
+      return responseBody.map(item => ({
+          label: item.label,
+          childLabels: item.children ? item.children.map(child => child.label) : []
+      }));
+  }; 
+
+  cy.wait(releaseTypeAlias)
+  .then((interception) => {
+    possibleValues.releaseTypes = extractDataFromResponse(interception, extractLabelsFromReleaseType).then(values => {
+      possibleValues.releaseTypes = values;
+    });
+  });
+   
+   const extractLabelsFromLineOfBusiness = (responseBody) => {
+      return responseBody.map(item => ({
+        label: item.name,
+        childLabels: item.children ? item.children.map(child => child.name) : []
+      }));
+    };
+
+    cy.wait(lineOfBusinessAlias)
+  .then((interception) => {
+    possibleValues.lineOfBusinesses = extractDataFromResponse(interception, extractLabelsFromLineOfBusiness).then(values => {
+      possibleValues.lineOfBusinesses = values;
+    });
+  });
+
+  cy.log("pos", JSON.stringify(possibleValues));
+  });
+});
+describe('Generate Random Value for each field', () => {
+
+  it('should populate random values from possibleValues', () => {
+
+    // Ensuring all values are populated first
+    cy.wrap(possibleValues).should((values) => {
+      for (const key in values) {
+        expect(values[key]).to.not.be.null; // making sure each value is populated
+      }
+    }).then((values) => {
+      for (const key in values) {
+        randomValues[key] = getRandomElement(values[key]);
+      }
+      cy.log("random", JSON.stringify(randomValues));
+    });
+  });
+});
 
 //     it('should create a job', () => {
 //     cy.visit('/operations-manager');
